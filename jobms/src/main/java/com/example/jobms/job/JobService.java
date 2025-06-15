@@ -1,6 +1,8 @@
 package com.example.jobms.job;
 
 
+import com.example.jobms.clients.CompanyClient;
+import com.example.jobms.clients.ReviewClient;
 import com.example.jobms.dto.JobDTO;
 import com.example.jobms.external.Company;
 import com.example.jobms.external.Review;
@@ -26,7 +28,11 @@ public class JobService {
     @Autowired
     RestTemplate restTemplate;
 
-    private List<Job> jobs = new ArrayList<>();
+    @Autowired
+    private CompanyClient companyClient;
+
+    @Autowired
+    private ReviewClient reviewClient;
 
     public List<JobDTO> findAll() {
 
@@ -38,9 +44,10 @@ public class JobService {
 
     private JobDTO convertToDto(Job job) {
 
-//        RestTemplate restTemplate=new RestTemplate();
-//        Company company = restTemplate.getForObject("http://localhost:8081/companies/" + job.getCompanyId(), Company.class);
-        Company company = restTemplate.getForObject("http://COMPANYMS:8081/companies/" + job.getCompanyId(), Company.class);
+        Company company=companyClient.getCompanyById(job.getCompanyId());
+        List<Review> reviews = reviewClient.getReviews(job.getCompanyId());
+
+
         ResponseEntity<List<Review>>reviewResponse= restTemplate.exchange("http://REVIEWMS:8083/reviews?companyId=" + job.getCompanyId(), HttpMethod.GET, null,
                 new ParameterizedTypeReference<List<Review>>(){
 
