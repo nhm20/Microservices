@@ -1,9 +1,14 @@
 package com.example.jobms.job;
 
 
-import com.example.jobms.dto.JobWithCompanyDTO;
+import com.example.jobms.dto.JobDTO;
 import com.example.jobms.external.Company;
+import com.example.jobms.external.Review;
+import com.example.jobms.mapper.JobMapper;
+import org.springframework.http.HttpMethod;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -21,25 +26,31 @@ public class JobService {
     @Autowired
     RestTemplate restTemplate;
 
-    private  List<Job> jobs=new ArrayList<>();
+    private List<Job> jobs = new ArrayList<>();
 
-    public List<JobWithCompanyDTO> findAll() {
+    public List<JobDTO> findAll() {
 
         List<Job> jobs = jobRepo.findAll();
-        List<JobWithCompanyDTO> jobWithCompanyDTOs = new ArrayList<>();
+        List<JobDTO> jobDTOS = new ArrayList<>();
 
         return jobs.stream().map(this::convertToDto).collect(Collectors.toList());
     }
 
-    private JobWithCompanyDTO convertToDto(Job job){
+    private JobDTO convertToDto(Job job) {
 
-        JobWithCompanyDTO jobWithCompanyDTO = new JobWithCompanyDTO();
-        jobWithCompanyDTO.setJob(job);
 //        RestTemplate restTemplate=new RestTemplate();
 //        Company company = restTemplate.getForObject("http://localhost:8081/companies/" + job.getCompanyId(), Company.class);
         Company company = restTemplate.getForObject("http://COMPANYMS:8081/companies/" + job.getCompanyId(), Company.class);
-        jobWithCompanyDTO.setCompany(company);
-        return jobWithCompanyDTO;
+        ResponseEntity<List<Review>>reviewResponse= restTemplate.exchange("http://REVIEWMS:8083/reviews?companyId=" + job.getCompanyId(), HttpMethod.GET, null,
+                new ParameterizedTypeReference<List<Review>>(){
+
+                });
+
+        List<Review> reviews = reviewResponse.getBody();
+
+        JobDTO jobDTO = JobMapper.mapToJobWithCompanyDto(job, company,reviews);
+//        jobDTO.setCompany(company);
+        return jobDTO;
     }
 
     public String createJob(Job job) {
@@ -47,24 +58,24 @@ public class JobService {
         return "Job saved successfully";
     }
 
-    public Job findJobById(Long id) {
-       return jobRepo.findById(id).orElse(null);
+    public JobDTO findJobById(Long id) {
+        Job job = jobRepo.findById(id).orElse(null);
+        return convertToDto(job);
     }
 
     public boolean deleteById(Long id) {
-        try{
+        try {
             jobRepo.deleteById(id);
             return true;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return false;
         }
     }
 
     public boolean updateJob(Long id, Job updatedJob) {
-        Optional<Job> jobOptional=jobRepo.findById(id);
-        if (jobOptional.isPresent()){
-            Job job=jobOptional.get();
+        Optional<Job> jobOptional = jobRepo.findById(id);
+        if (jobOptional.isPresent()) {
+            Job job = jobOptional.get();
             job.setTitle(updatedJob.getTitle());
             job.setDescription(updatedJob.getDescription());
             job.setMinSalary(updatedJob.getMinSalary());
