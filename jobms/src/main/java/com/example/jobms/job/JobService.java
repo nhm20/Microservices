@@ -8,6 +8,7 @@ import com.example.jobms.external.Company;
 import com.example.jobms.external.Review;
 import com.example.jobms.mapper.JobMapper;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.http.HttpMethod;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
@@ -35,8 +36,14 @@ public class JobService {
     @Autowired
     private ReviewClient reviewClient;
 
-    @CircuitBreaker(name="companyBreaker",fallbackMethod = "companyBreakerFallback")
+    int attempt=0;
+
+
+//    @CircuitBreaker(name="companyBreaker",fallbackMethod = "companyBreakerFallback")
+
+    @Retry(name="companyBreaker",fallbackMethod = "companyBreakerFallback")
     public List<JobDTO> findAll() {
+        System.out.println("Attempt number: " + ++attempt);
 
         List<Job> jobs = jobRepo.findAll();
         List<JobDTO> jobDTOS = new ArrayList<>();
