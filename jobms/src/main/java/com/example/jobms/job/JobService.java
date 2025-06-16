@@ -7,6 +7,7 @@ import com.example.jobms.dto.JobDTO;
 import com.example.jobms.external.Company;
 import com.example.jobms.external.Review;
 import com.example.jobms.mapper.JobMapper;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.springframework.http.HttpMethod;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
@@ -34,12 +35,18 @@ public class JobService {
     @Autowired
     private ReviewClient reviewClient;
 
+    @CircuitBreaker(name="companyBreaker",fallbackMethod = "companyBreakerFallback")
     public List<JobDTO> findAll() {
 
         List<Job> jobs = jobRepo.findAll();
         List<JobDTO> jobDTOS = new ArrayList<>();
 
         return jobs.stream().map(this::convertToDto).collect(Collectors.toList());
+    }
+    public List<String> companyBreakerFallback(Exception e) {
+        List<String> list = new ArrayList<>();
+        list.add("Company service is down, please try again later");
+        return list;
     }
 
     private JobDTO convertToDto(Job job) {
@@ -53,9 +60,9 @@ public class JobService {
 
                 });
 
-        List<Review> reviews = reviewResponse.getBody();
+        List<Review> reviewsRes = reviewResponse.getBody();
 
-        JobDTO jobDTO = JobMapper.mapToJobWithCompanyDto(job, company,reviews);
+        JobDTO jobDTO = JobMapper.mapToJobWithCompanyDto(job, company,reviewsRes);
 //        jobDTO.setCompany(company);
         return jobDTO;
     }
