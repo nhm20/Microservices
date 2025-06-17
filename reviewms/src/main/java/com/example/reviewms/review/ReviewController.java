@@ -1,6 +1,7 @@
 package com.example.reviewms.review;
 
 
+import com.example.reviewms.review.messaging.ReviewMessageProducer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +16,9 @@ public class ReviewController {
     @Autowired
     private ReviewService reviewService;
 
+    @Autowired
+    private ReviewMessageProducer reviewMessageProducer;
+
     @GetMapping
     public ResponseEntity<List<Review>> getAllReviews(
             @RequestParam Long companyId) {
@@ -25,8 +29,10 @@ public class ReviewController {
     @PostMapping
     public ResponseEntity<String> createReview(@RequestParam Long companyId, @RequestBody Review review) {
         boolean response = reviewService.createReview(review, companyId);
-        if (response)
+        if (response) {
+            reviewMessageProducer.sendReviewMessage(review);
             return new ResponseEntity<>("Review created successfully", HttpStatus.CREATED);
+        }
         else
             return new ResponseEntity<>("Company not found", HttpStatus.NOT_FOUND);
     }
@@ -58,6 +64,12 @@ public class ReviewController {
         } else {
             return new ResponseEntity<>("Review not found", HttpStatus.NOT_FOUND);
         }
+    }
+
+    @GetMapping("/average-rating")
+    public Double getAverageReview(@RequestParam Long companyId) {
+        List<Review> reviewList= reviewService.findAllReviews(companyId);
+        return reviewList.stream().mapToDouble(Review::getRating).average().orElse(0.0);
     }
 
 }
